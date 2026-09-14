@@ -31,11 +31,33 @@ one-hue build --target zed     # only the Zed family file
 one-hue build --theme monochrome-purple
 one-hue build --print          # also print the palette grades as terminal color blocks
 one-hue list                   # show available themes and editors
+one-hue install                # ask which editors, then build and install for them
 ```
 
-Install the results: **VS Code** — `code --install-extension` the packaged
-extension (`npx @vscode/vsce package`), or copy `monochrome-purple.json` into
-`~/.vscode/extensions`. **Zed** — copy `one-hue.json` into `~/.config/zed/themes/`.
+## Install
+
+`one-hue install` builds the themes and copies them into each selected
+editor's theme directory. Run it with no arguments to pick editors
+interactively (multi-select via [huh](https://github.com/charmbracelet/huh)),
+or pass `--editors` to install non-interactively:
+
+```sh
+one-hue install                # interactive editor multi-select
+one-hue install --editors vscode,zed
+one-hue install --editors zed
+```
+
+Install locations:
+
+- **VS Code** — written as a local extension under
+  `~/.vscode/extensions/metruzanca.theme-monochrome/` (a minimal manifest plus
+  the theme files). Reload the window (`Developer: Reload Window`) to enable it.
+- **Zed** — copied into `~/.config/zed/themes/` (`%APPDATA%\Zed\themes` on
+  Windows). It appears in the theme selector (`cmd-k cmd-t`) on next start.
+
+For distribution, package the extension from the repo root instead:
+`npx @vscode/vsce package` then `code --install-extension`. Both paths use the
+same generated theme files.
 
 ## The color model
 

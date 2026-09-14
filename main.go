@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/metruzanca/one-hue-theme/cmd"
@@ -10,6 +11,7 @@ import (
 
 func main() {
 	if err := cmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, "one-hue:", err)
 		os.Exit(1)
 	}
 }
