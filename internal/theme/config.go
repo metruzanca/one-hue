@@ -1,6 +1,10 @@
 package theme
 
-import "github.com/metruzanca/one-hue-theme/internal/color"
+import (
+	"fmt"
+
+	"github.com/metruzanca/one-hue-theme/internal/color"
+)
 
 // Config describes one theme variant: the grade configuration plus how the
 // bracket-highlight colors are picked from the ring.
@@ -19,6 +23,17 @@ type Config struct {
 // All lists every built-in theme variant.
 func All() []Config {
 	return []Config{MonochromePurple()}
+}
+
+// Find returns the built-in theme with the given slug.
+func Find(slug string) (*Config, error) {
+	for i := range All() {
+		if All()[i].Slug == slug {
+			c := All()[i]
+			return &c, nil
+		}
+	}
+	return nil, fmt.Errorf("unknown theme %q", slug)
 }
 
 // MonochromePurple is the purple monochromatic variant.

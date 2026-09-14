@@ -20,7 +20,7 @@ themes/
 ## Build
 
 ```sh
-go build -o one-hue ./cmd/one-hue
+go build -o one-hue .
 ```
 
 ## Usage
