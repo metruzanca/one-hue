@@ -31,7 +31,7 @@ one-hue build --target zed     # only the Zed family file
 one-hue build --theme monochrome-purple
 one-hue build --print          # also print the palette grades as terminal color blocks
 one-hue list                   # show available themes and editors
-one-hue install                # ask which editors, then build and install for them
+one-hue install                # pick editors (pre-selected when code/zed found), then build and install
 ```
 
 ## Install
@@ -39,7 +39,9 @@ one-hue install                # ask which editors, then build and install for t
 `one-hue install` builds the themes and copies them into each selected
 editor's theme directory. Run it with no arguments to pick editors
 interactively (multi-select via [huh](https://github.com/charmbracelet/huh)),
-or pass `--editors` to install non-interactively:
+or pass `--editors` to install non-interactively. In the interactive prompt,
+the editors are pre-selected based on whether their CLI (`code` or `zed`) is
+found on `PATH`:
 
 ```sh
 one-hue install                # interactive editor multi-select
