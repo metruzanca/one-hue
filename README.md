@@ -1,6 +1,6 @@
 # One Hue Theme
 
-![](.github/one-hue-purple.webp)
+![](.github/one-hue-purple-zed.png)
 
 A monochromatic + single accent color theme generator, a hard fork of the
 [Dolch](https://github.com/BelleveInvis/dolch) VS Code theme. Added support for other editors.
