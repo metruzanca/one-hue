@@ -1,9 +1,9 @@
 # One Hue Theme
 
-A monochromatic + single accent color theme generator, forked from the
+A monochromatic + single accent color theme generator, a hard fork of the
 [Dolch](https://github.com/BelleveInvis/dolch) VS Code theme. It is a small
-Go CLI that renders static theme files for the **VS Code** and **Zed**
-editors from one shared color model.
+Go CLI that renders static theme files for multiple editors — currently
+**VS Code** and **Zed** — from one shared color model.
 
 The shipped variant is **Monochrome-Purple**: neutral `fg`/`bg` grades in one
 hue, a purple accent, and a 12-color "ring" reserved for semantic colors
@@ -111,6 +111,7 @@ per theme (VS Code) or a single family file (Zed). Register it in
 
 ## Credits
 
-Color science and theme design are from the original
+One Hue is a hard fork of the original
 [Dolch](https://github.com/BelleveInvis/dolch) theme by Belleve Invis
-(Renzhi Li), ported from TypeScript to Go.
+(Renzhi Li): the color science and theme design come from there, ported from
+TypeScript to Go and extended to target multiple editors.
