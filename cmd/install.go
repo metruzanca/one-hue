@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -34,12 +35,13 @@ var (
 type editor struct {
 	name   string // flag/prompt value
 	label  string // display name
+	cli    string // binary that signals the editor is available
 	target gen.Target
 }
 
 var editors = []editor{
-	{"vscode", "VS Code", gen.Vscode()},
-	{"zed", "Zed", gen.Zed()},
+	{"vscode", "VS Code", "code", gen.Vscode()},
+	{"zed", "Zed", "zed", gen.Zed()},
 }
 
 var installCmd = &cobra.Command{
@@ -110,7 +112,12 @@ func resolveEditors() ([]editor, error) {
 		return out, nil
 	}
 
-	picked := []string{"vscode", "zed"}
+	var picked []string
+	for _, e := range editors {
+		if _, err := exec.LookPath(e.cli); err == nil {
+			picked = append(picked, e.name)
+		}
+	}
 	opts := make([]huh.Option[string], 0, len(editors))
 	for _, e := range editors {
 		opts = append(opts, huh.NewOption(e.label, e.name))
