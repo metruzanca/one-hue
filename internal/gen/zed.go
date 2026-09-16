@@ -22,7 +22,7 @@ func (z zedTarget) Render(all []*theme.Built) ([]File, error) {
 		Path: "zed/one-hue.json",
 		Content: Encode([]Field{
 			{"$schema", "https://zed.dev/schema/themes/v0.2.0.json"},
-			{"name", "One Hue Theme"},
+			{"name", "One Hue"},
 			{"author", "metruzanca"},
 			{"themes", themes},
 		}),

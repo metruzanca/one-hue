@@ -8,6 +8,7 @@ import (
 var (
 	targetFlag = "all"
 	themeFlag  = ""
+	configFlag = "themes.toml"
 	outFlag    = "themes"
 	printFlag  = false
 )
@@ -34,6 +35,8 @@ func init() {
 		"editor target to render: vscode, zed, or all")
 	rootCmd.PersistentFlags().StringVar(&themeFlag, "theme", "",
 		"theme variant slug; empty builds all variants")
+	rootCmd.PersistentFlags().StringVar(&configFlag, "config", "themes.toml",
+		"TOML file defining theme variants (slug, name, accent)")
 	rootCmd.PersistentFlags().StringVar(&outFlag, "out", "themes",
 		"output directory, files go under <out>/<target>/")
 	rootCmd.PersistentFlags().BoolVar(&printFlag, "print", false,

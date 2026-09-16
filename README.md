@@ -1,6 +1,6 @@
 # One Hue Theme
 
-![](.github/one-hue-purple-zed.png)
+![](.github/images/one-hue-purple-zed.png)
 
 A monochromatic + single accent color theme generator, a hard fork of the
 [Dolch](https://github.com/BelleveInvis/dolch) VS Code theme. Added support for other editors.
@@ -19,6 +19,17 @@ go run . install # interactive editor multi-select
 go run . install --editors vscode,zed
 go run . install --editors zed
 ```
+
+Theme variants live in `themes.toml` — each entry is a name and an accent
+color, and the rest of the monochromatic model is derived from that accent:
+
+```toml
+[[theme]]
+name = "Monochrome-Purple"
+accent = "#6088C9"
+```
+
+Pass `--config <file>` to build from a different file.
 
 Install locations:
 

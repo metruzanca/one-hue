@@ -80,7 +80,10 @@ func runInstall() error {
 		return fmt.Errorf("no editors selected")
 	}
 
-	configs := theme.All()
+	configs, err := theme.Load(configFlag)
+	if err != nil {
+		return err
+	}
 	built := make([]*theme.Built, len(configs))
 	for i := range configs {
 		built[i] = theme.Build(configs[i])

@@ -1,0 +1,15 @@
+# One Hue theme variants. Each entry picks an accent color; the whole
+# monochromatic + accent model (grays, co-accent, semantic ring) is derived
+# from that accent by the generator, so only name and accent are configurable.
+
+[[theme]]
+name = "Monochrome-Purple"
+accent = "#6088C9"
+
+[[theme]]
+name = "Dolch Blue"
+accent = "#0096B7"
+
+[[theme]]
+name = "Dolch Orange"
+accent = "#B37D1E"

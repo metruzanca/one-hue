@@ -13,8 +13,12 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List available theme variants and editor targets",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		configs, err := theme.Load(configFlag)
+		if err != nil {
+			return err
+		}
 		fmt.Println("Themes:")
-		for _, cfg := range theme.All() {
+		for _, cfg := range configs {
 			fmt.Printf("  %-20s %s\n", cfg.Slug, cfg.Name)
 		}
 		fmt.Println("Targets:")

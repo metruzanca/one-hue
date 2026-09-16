@@ -24,6 +24,15 @@ func (c Color) C() float64 {
 	return math.Hypot(c.A, c.Bv)
 }
 
+// Hue returns the LCH hue angle in degrees, 0..360.
+func (c Color) Hue() float64 {
+	h := math.Atan2(c.Bv, c.A) / DEGREE
+	if h < 0 {
+		h += 360
+	}
+	return h
+}
+
 // DEGREE converts degrees to radians.
 const DEGREE = math.Pi / 180
 
