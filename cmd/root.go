@@ -6,15 +6,13 @@ import (
 )
 
 var (
-	targetFlag = "all"
-	themeFlag  = ""
 	configFlag = "themes.toml"
 	outFlag    = "themes"
 	printFlag  = false
 )
 
-// rootCmd is the default build command: running `one-hue` with no subcommand
-// builds every theme variant for every editor.
+// rootCmd lists the subcommands; running `one-hue` with no arguments prints
+// its help.
 var rootCmd = &cobra.Command{
 	Use:   "one-hue",
 	Short: "Generate static theme files for code editors",
@@ -25,16 +23,9 @@ results under the output directory, one subdirectory per editor.
 Supported editors (targets): vscode, zed.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return runBuild()
-	},
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&targetFlag, "target", "all",
-		"editor target to render: vscode, zed, or all")
-	rootCmd.PersistentFlags().StringVar(&themeFlag, "theme", "",
-		"theme variant slug; empty builds all variants")
 	rootCmd.PersistentFlags().StringVar(&configFlag, "config", "themes.toml",
 		"TOML file defining theme variants (slug, name, accent)")
 	rootCmd.PersistentFlags().StringVar(&outFlag, "out", "themes",

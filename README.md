@@ -20,17 +20,6 @@ go run . install --editors vscode,zed
 go run . install --editors zed
 ```
 
-Theme variants live in `themes.toml` — each entry is a name and an accent
-color, and the rest of the monochromatic model is derived from that accent:
-
-```toml
-[[theme]]
-name = "Monochrome-Purple"
-accent = "#6088C9"
-```
-
-Pass `--config <file>` to build from a different file.
-
 Install locations:
 
 - **VS Code** — written as a local extension under

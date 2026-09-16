@@ -95,17 +95,6 @@ func Slugify(name string) string {
 	return strings.Trim(b.String(), "-")
 }
 
-// Find returns the config with the given slug.
-func Find(slug string, configs []Config) (*Config, error) {
-	for i := range configs {
-		if configs[i].Slug == slug {
-			c := configs[i]
-			return &c, nil
-		}
-	}
-	return nil, fmt.Errorf("unknown theme %q", slug)
-}
-
 // fromAccent derives one theme's full grade set from a single accent color.
 // The monochromatic model lives here: the accent hue drives the accent and
 // co-accent grades and tints the neutral grays, while the semantic ring stays

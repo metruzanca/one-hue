@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -12,10 +11,8 @@ import (
 
 var buildCmd = &cobra.Command{
 	Use:   "build",
-	Short: "Build static theme files for one or all editors",
+	Short: "Build static theme files for all editors",
 	Example: "  one-hue build\n" +
-		"  one-hue build --target zed\n" +
-		"  one-hue build --theme monochrome-purple --target vscode\n" +
 		"  one-hue build --print",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runBuild()
@@ -23,25 +20,9 @@ var buildCmd = &cobra.Command{
 }
 
 func runBuild() error {
-	targets := gen.Targets
-	if !strings.EqualFold(targetFlag, "all") {
-		t, err := gen.FindTarget(targetFlag)
-		if err != nil {
-			return err
-		}
-		targets = []gen.Target{t}
-	}
-
 	configs, err := theme.Load(configFlag)
 	if err != nil {
 		return err
-	}
-	if themeFlag != "" {
-		match, err := theme.Find(themeFlag, configs)
-		if err != nil {
-			return err
-		}
-		configs = []theme.Config{*match}
 	}
 
 	built := make([]*theme.Built, len(configs))
@@ -54,13 +35,9 @@ func runBuild() error {
 		}
 	}
 
-	var files []gen.File
-	for _, t := range targets {
-		f, err := t.Render(built)
-		if err != nil {
-			return fmt.Errorf("%s: %w", t.Name(), err)
-		}
-		files = append(files, f...)
+	files, err := gen.RenderAll(built)
+	if err != nil {
+		return err
 	}
 
 	if err := gen.WriteFiles(outFlag, files); err != nil {

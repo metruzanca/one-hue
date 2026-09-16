@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/metruzanca/one-hue-theme/internal/theme"
 )
@@ -30,25 +29,6 @@ type Target interface {
 var Targets = []Target{
 	Vscode(),
 	Zed(),
-}
-
-// FindTarget returns the target registered under name.
-func FindTarget(name string) (Target, error) {
-	for _, t := range Targets {
-		if strings.EqualFold(t.Name(), name) {
-			return t, nil
-		}
-	}
-	return nil, fmt.Errorf("unknown target %q (available: %s)", name, TargetNames())
-}
-
-// TargetNames lists the registered target names.
-func TargetNames() string {
-	names := make([]string, len(Targets))
-	for i, t := range Targets {
-		names[i] = t.Name()
-	}
-	return strings.Join(names, ", ")
 }
 
 // RenderAll renders every theme for every target.
