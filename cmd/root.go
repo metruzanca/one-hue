@@ -20,7 +20,7 @@ var rootCmd = &cobra.Command{
 shared color model. It builds the configured theme variants and writes the
 results under the output directory, one subdirectory per editor.
 
-Supported editors (targets): vscode, zed.`,
+Supported editors (targets): vscode, zed, opencode, herdr.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 }

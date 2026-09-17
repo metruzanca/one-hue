@@ -29,6 +29,8 @@ type Target interface {
 var Targets = []Target{
 	Vscode(),
 	Zed(),
+	Opencode(),
+	Herdr(),
 }
 
 // RenderAll renders every theme for every target.

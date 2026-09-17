@@ -4,7 +4,7 @@
 
 A monochromatic + single accent color theme generator, a hard fork of the
 [Dolch](https://github.com/BelleveInvis/dolch) VS Code theme. Added support for other editors.
-Currently **VS Code** and **Zed** — from one shared color model.
+Currently **VS Code**, **Zed**, **OpenCode** and **Herdr** — from one shared color model.
 
 The shipped variant is **Monochrome-Purple**: neutral `fg`/`bg` grades in one
 hue, a purple accent, and a 12-color "ring" reserved for semantic colors
@@ -16,8 +16,8 @@ You can either just grab the pre-built files from `/themes/` and add them to you
 
 ```sh
 go run . install # interactive editor multi-select
-go run . install --editors vscode,zed
-go run . install --editors zed
+go run . install --editors vscode,zed,opencode,herdr
+go run . install --editors opencode,herdr --theme dolch-blue
 ```
 
 ### Web preview (`serve`)
@@ -41,6 +41,14 @@ Install locations:
   the theme files). Reload the window (`Developer: Reload Window`) to enable it.
 - **Zed** — copied into `~/.config/zed/themes/` (`%APPDATA%\Zed\themes` on
   Windows). It appears in the theme selector (`cmd-k cmd-t`) on next start.
+- **OpenCode** — copied into `~/.config/opencode/themes/`
+  (`$XDG_CONFIG_HOME/opencode/themes`, `%APPDATA%\opencode\themes` on Windows).
+  Select with `/theme` on next start.
+- **Herdr** — merges the chosen variant's `[theme.custom]` block into
+  `~/.config/herdr/config.toml` (`HERDR_CONFIG_PATH` is honored,
+  `%APPDATA%\herdr\config.toml` on Windows). Herdr holds one active theme, so
+  pass `--theme <slug>` when several variants exist, or pick from the prompt.
+  Run `herdr server reload-config` to apply.
 
 ## Building
 

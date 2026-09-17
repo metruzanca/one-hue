@@ -27,21 +27,24 @@ const (
 
 var (
 	installEditors   string // --editors: comma list; empty prompts interactively
+	installTheme     string // --theme: slug for editors with one active theme
 	installVscodeDir string
 	installZedDir    string
 )
 
 // editor bundles one installable editor with its theme target.
 type editor struct {
-	name   string // flag/prompt value
-	label  string // display name
+	name   string   // flag/prompt value
+	label  string   // display name
 	cli    []string // binaries that signal the editor is available, tried in order
 	target gen.Target
 }
 
 var editors = []editor{
 	{"vscode", "VS Code", []string{"code"}, gen.Vscode()},
-	{"zed", "Zed", []string{"zeditor", "zed"}, gen.Zed()},
+	{"zed", "Zed", []string{"zed", "zeditor"}, gen.Zed()},
+	{"opencode", "OpenCode", []string{"opencode"}, gen.Opencode()},
+	{"herdr", "Herdr", []string{"herdr"}, gen.Herdr()},
 }
 
 var installCmd = &cobra.Command{
@@ -52,10 +55,12 @@ theme directory. The editor selection is presented as an interactive
 multi-select; pass --editors to install non-interactively.
 
 VS Code themes install as a local extension under ~/.vscode/extensions.
-Zed themes install under ~/.config/zed/themes.`,
+Zed and OpenCode themes copy into their per-user themes directories.
+Herdr merges the chosen variant's [theme.custom] block into its config file
+(one active theme, so pick with --theme or the interactive prompt).`,
 	Example: "  one-hue install\n" +
 		"  one-hue install --editors vscode,zed\n" +
-		"  one-hue install --editors zed",
+		"  one-hue install --editors opencode,herdr --theme dolch-blue",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runInstall()
 	},
@@ -63,7 +68,9 @@ Zed themes install under ~/.config/zed/themes.`,
 
 func init() {
 	installCmd.Flags().StringVar(&installEditors, "editors", "",
-		"comma-separated editors to install (vscode,zed); prompts when empty")
+		"comma-separated editors to install (vscode,zed,opencode,herdr); prompts when empty")
+	installCmd.Flags().StringVar(&installTheme, "theme", "",
+		"theme slug to install (herdr holds one active theme)")
 	installCmd.Flags().StringVar(&installVscodeDir, "vscode-dir", "",
 		"override the VS Code extensions directory")
 	installCmd.Flags().StringVar(&installZedDir, "zed-dir", "",
@@ -134,7 +141,7 @@ func resolveEditors() ([]editor, error) {
 			Options(opts...).
 			Value(&picked),
 	)).Run(); err != nil {
-		return nil, fmt.Errorf("interactive selection failed (use --editors vscode,zed instead): %w", err)
+		return nil, fmt.Errorf("interactive selection failed (use --editors vscode,zed,opencode,herdr instead): %w", err)
 	}
 
 	var out []editor
@@ -169,6 +176,10 @@ func installFor(e editor, files []gen.File, built []*theme.Built) error {
 		return installVscode(files, built)
 	case "zed":
 		return installZed(files)
+	case "opencode":
+		return installOpencode(files)
+	case "herdr":
+		return installHerdr(files, built)
 	}
 	return fmt.Errorf("no installer for editor %q", e.name)
 }
@@ -233,6 +244,190 @@ func installZed(files []gen.File) error {
 	}
 	fmt.Println("The theme appears in the theme selector (cmd-k cmd-t) on next Zed start.")
 	return nil
+}
+
+// installOpencode copies each generated theme JSON into the OpenCode themes
+// directory. OpenCode loads every file there as a custom theme.
+func installOpencode(files []gen.File) error {
+	dir, err := opencodeThemesDir()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	for _, f := range files {
+		p := filepath.Join(dir, filepath.Base(f.Path))
+		if err := writeFile(p, f.Content); err != nil {
+			return err
+		}
+		fmt.Printf("installed %s\n", p)
+	}
+	fmt.Println("The theme appears in the theme selector (/theme) on next OpenCode start.")
+	return nil
+}
+
+// installHerdr merges one theme's [theme.custom] override block into the Herdr
+// config file. Herdr holds a single active theme, so when several variants
+// exist the user picks one (interactively, or via --theme).
+func installHerdr(files []gen.File, built []*theme.Built) error {
+	cfg, err := pickTheme(built)
+	if err != nil {
+		return err
+	}
+	var snippet []byte
+	for _, f := range files {
+		if f.Path == "herdr/"+cfg.Slug+".toml" {
+			snippet = f.Content
+			break
+		}
+	}
+	if snippet == nil {
+		return fmt.Errorf("no herdr snippet generated for theme %q", cfg.Slug)
+	}
+	path, err := herdrConfigPath()
+	if err != nil {
+		return err
+	}
+	if err := mergeHerdrTheme(path, snippet); err != nil {
+		return fmt.Errorf("install herdr theme: %w", err)
+	}
+	fmt.Printf("installed %s theme into %s\n", cfg.Name, path)
+	fmt.Println("Run `herdr server reload-config` to apply the theme.")
+	return nil
+}
+
+// pickTheme resolves which built theme an editor that supports one active
+// theme (herdr) should install: --theme wins, then the sole variant, then an
+// interactive prompt.
+func pickTheme(built []*theme.Built) (*theme.Config, error) {
+	if installTheme != "" {
+		for _, b := range built {
+			if b.Config.Slug == installTheme {
+				c := b.Config
+				return &c, nil
+			}
+		}
+		return nil, fmt.Errorf("unknown theme %q", installTheme)
+	}
+	if len(built) == 1 {
+		c := built[0].Config
+		return &c, nil
+	}
+
+	opts := make([]huh.Option[string], 0, len(built))
+	for _, b := range built {
+		opts = append(opts, huh.NewOption(b.Config.Name, b.Config.Slug))
+	}
+	var picked string
+	if err := huh.NewForm(huh.NewGroup(
+		huh.NewSelect[string]().
+			Title("Install herdr theme").
+			Options(opts...).
+			Value(&picked),
+	)).Run(); err != nil {
+		return nil, fmt.Errorf("interactive theme selection failed (use --theme <slug> instead): %w", err)
+	}
+	for _, b := range built {
+		if b.Config.Slug == picked {
+			c := b.Config
+			return &c, nil
+		}
+	}
+	return nil, fmt.Errorf("no herdr theme selected")
+}
+
+// mergeHerdrTheme writes snippet into the herdr config file at path, replacing
+// any existing [theme.custom] section (and its mode subtables) in place and
+// otherwise appending, without reformatting the rest of the file.
+func mergeHerdrTheme(path string, snippet []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		return os.WriteFile(path, append([]byte("# One Hue theme for herdr\n"), snippet...), 0o644)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	start := -1
+	for i, ln := range lines {
+		if strings.TrimSpace(ln) == "[theme.custom]" {
+			start = i
+			break
+		}
+	}
+	if start == -1 {
+		out := string(data)
+		if !strings.HasSuffix(out, "\n") {
+			out += "\n"
+		}
+		out += "\n"
+		return os.WriteFile(path, []byte(out+string(snippet)), 0o644)
+	}
+
+	end := len(lines)
+	for i := start + 1; i < len(lines); i++ {
+		trimmed := strings.TrimSpace(lines[i])
+		if strings.HasPrefix(trimmed, "[") && !strings.HasPrefix(trimmed, "[theme.custom") {
+			end = i
+			break
+		}
+	}
+
+	var out strings.Builder
+	out.WriteString(strings.Join(lines[:start], "\n"))
+	if start > 0 && lines[start-1] != "" {
+		out.WriteString("\n")
+	}
+	out.WriteString(string(snippet))
+	out.WriteString("\n")
+	if end < len(lines) {
+		out.WriteString(strings.Join(lines[end:], "\n"))
+	}
+	return os.WriteFile(path, []byte(out.String()), 0o644)
+}
+
+// herdrConfigPath resolves the herdr config file, honoring HERDR_CONFIG_PATH.
+func herdrConfigPath() (string, error) {
+	if p := os.Getenv("HERDR_CONFIG_PATH"); p != "" {
+		return p, nil
+	}
+	if runtime.GOOS == "windows" {
+		cfg, err := os.UserConfigDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(cfg, "herdr", "config.toml"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".config", "herdr", "config.toml"), nil
+}
+
+// opencodeThemesDir returns the OpenCode themes directory.
+func opencodeThemesDir() (string, error) {
+	if runtime.GOOS == "windows" {
+		cfg, err := os.UserConfigDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(cfg, "opencode", "themes"), nil
+	}
+	base := os.Getenv("XDG_CONFIG_HOME")
+	if base == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		base = filepath.Join(home, ".config")
+	}
+	return filepath.Join(base, "opencode", "themes"), nil
 }
 
 func writeFile(p string, content []byte) error {
