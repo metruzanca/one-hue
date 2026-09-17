@@ -44,15 +44,42 @@ func RenderAll(all []*theme.Built) ([]File, error) {
 	return files, nil
 }
 
-// WriteFiles writes generated files under the themes directory, creating
-// subdirectories as needed.
+// WriteFiles clears the themes directory and writes generated files under it,
+// creating subdirectories as needed. A build always regenerates fresh, so
+// stale outputs (e.g. from a renamed theme) are removed.
 func WriteFiles(themeDir string, files []File) error {
+	if err := clearDir(themeDir); err != nil {
+		return err
+	}
 	for _, f := range files {
 		p := filepath.Join(themeDir, f.Path)
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			return err
 		}
 		if err := os.WriteFile(p, f.Content, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// clearDir removes the contents of dir so a build starts from a clean slate.
+// The directory itself is kept. It refuses to clear the current directory or
+// a filesystem root, since `--out .` would otherwise delete everything.
+func clearDir(dir string) error {
+	clean := filepath.Clean(dir)
+	if clean == "." || clean == ".." || clean == string(filepath.Separator) {
+		return fmt.Errorf("refusing to clear output directory %q", dir)
+	}
+	entries, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if err := os.RemoveAll(filepath.Join(dir, e.Name())); err != nil {
 			return err
 		}
 	}

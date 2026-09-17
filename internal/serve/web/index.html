@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>One Hue Theme Studio</title>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "@codemirror/view": "https://esm.sh/@codemirror/view@6?target=es2022",
+      "@codemirror/state": "https://esm.sh/@codemirror/state@6?target=es2022",
+      "@codemirror/language": "https://esm.sh/@codemirror/language@6?target=es2022",
+      "@codemirror/commands": "https://esm.sh/@codemirror/commands@6?target=es2022",
+      "@codemirror/search": "https://esm.sh/@codemirror/search@6?target=es2022",
+      "@codemirror/autocomplete": "https://esm.sh/@codemirror/autocomplete@6?target=es2022",
+      "@codemirror/lint": "https://esm.sh/@codemirror/lint@6?target=es2022",
+      "@codemirror/lang-go": "https://esm.sh/@codemirror/lang-go@6?target=es2022",
+      "@lezer/highlight": "https://esm.sh/@lezer/highlight@1?target=es2022"
+    }
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #14141a;
+      --panel: #1b1b22;
+      --panel-2: #20202a;
+      --fg: #d6d6e0;
+      --muted: #8b8b98;
+      --accent: #6088c9;
+      --border: #2b2b36;
+      --error: #e07a7a;
+      --ok: #7ae0a0;
+      font-size: 15px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      grid-template-rows: 1fr;
+      height: 100vh;
+    }
+    h1 { font-size: 1.15rem; margin: 0; letter-spacing: .02em; }
+    h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 .5rem; }
+
+    #sidebar {
+      border-right: 1px solid var(--border);
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    #sidebar header { padding: 1rem; border-bottom: 1px solid var(--border); }
+    #sidebar header p { margin: .25rem 0 0; font-size: .8rem; color: var(--muted); }
+    #sidebar .actions { padding: .75rem 1rem; border-bottom: 1px solid var(--border); }
+    #themes-list {
+      list-style: none;
+      margin: 0;
+      padding: .5rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .theme-row {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .5rem .6rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .theme-row:hover { background: var(--panel-2); }
+    .theme-row.active { background: var(--panel-2); outline: 1px solid var(--accent); }
+    .theme-row .swatch {
+      width: 1.6rem; height: 1.6rem;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      flex: none;
+    }
+    .theme-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .theme-row .accent { font-size: .75rem; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+
+    button {
+      background: var(--accent);
+      color: var(--bg);
+      border: 0;
+      border-radius: 6px;
+      padding: .45rem .9rem;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    button:hover { filter: brightness(1.1); }
+
+    #main {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 1.25rem;
+      gap: 1rem;
+    }
+    #edit-form {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: .75rem;
+      align-items: end;
+    }
+    .field { display: flex; flex-direction: column; gap: .3rem; }
+    .field label { font-size: .75rem; color: var(--muted); }
+    input[type=text] {
+      background: var(--panel);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .45rem .6rem;
+      font-size: .9rem;
+    }
+    input[type=text]:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+    input[type=color] {
+      width: 3rem; height: 2.25rem;
+      padding: 2px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type=color]::-webkit-color-swatch { border: 0; border-radius: 4px; }
+
+    #flash {
+      padding: .55rem .8rem;
+      border-radius: 6px;
+      font-size: .85rem;
+      border: 1px solid transparent;
+    }
+    #flash.ok { color: var(--ok); border-color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+    #flash.error { color: var(--error); border-color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
+
+    #preview-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .75rem; }
+    #preview-label { font-size: .75rem; color: var(--muted); }
+    #preview { flex: 1; min-height: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    #preview .cm-editor { height: 100%; font-size: .9rem; }
+    #preview .cm-scroller { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+    #swatches { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .swatch-group { min-width: 190px; }
+    .swatch-group .label { font-size: .7rem; color: var(--muted); margin-bottom: .25rem; text-transform: uppercase; letter-spacing: .05em; }
+    .strip { display: flex; height: 1.1rem; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+    .strip span { flex: 1; }
+  </style>
+</head>
+<body>
+  <aside id="sidebar">
+    <header>
+      <h1>One Hue</h1>
+      <p>Theme Studio</p>
+    </header>
+    <div class="actions">
+      <button id="new-btn" type="button">+ New theme</button>
+    </div>
+    {{template "themes-list" .}}
+  </aside>
+
+  <main id="main">
+    <form id="edit-form" hx-put="/api/themes" hx-target="#themes-list" hx-swap="outerHTML">
+      <input type="hidden" name="originalSlug" id="theme-slug">
+      <div class="field">
+        <label for="theme-name">Name</label>
+        <input type="text" name="name" id="theme-name" placeholder="My Theme" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="theme-accent-color">Accent</label>
+        <input type="color" name="accentColor" id="theme-accent-color" value="#6088C9">
+      </div>
+      <div class="field">
+        <label for="theme-accent-hex">Accent hex</label>
+        <input type="text" name="accent" id="theme-accent-hex" value="#6088C9" autocomplete="off" spellcheck="false">
+      </div>
+      <button type="submit">Save theme</button>
+    </form>
+
+    <div id="flash"></div>
+
+    <section id="preview-wrap">
+      <div id="preview-label">Live preview — edits are previewed immediately, saved only when you hit Save</div>
+      <div id="preview"></div>
+    </section>
+
+    <section id="swatches"></section>
+  </main>
+
+<script type="module">
+import { EditorView, keymap, lineNumbers, highlightActiveLineGutter,
+         highlightSpecialChars, drawSelection, dropCursor, rectangularSelection,
+         crosshairCursor, highlightActiveLine } from "@codemirror/view";
+import { EditorState, Compartment } from "@codemirror/state";
+import { syntaxHighlighting, HighlightStyle, bracketMatching, indentOnInput, foldGutter } from "@codemirror/language";
+import { history, defaultKeymap, historyKeymap } from "@codemirror/commands";
+import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import { closeBrackets, autocompletion, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
+import { lintKeymap } from "@codemirror/lint";
+import { go } from "@codemirror/lang-go";
+import { tags } from "@lezer/highlight";
+
+const SAMPLE = `package main
+
+// fetchUser loads a user by id, returning a pointer that is nil when
+// the record does not exist.
+func fetchUser(id int64) (*User, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("invalid id %d", id)
+	}
+	rows, err := db.Query("SELECT id, name FROM users WHERE id = ?", id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var u User
+	if rows.Next() {
+		if err := rows.Scan(&u.ID, &u.Name); err != nil {
+			return nil, err
+		}
+	}
+	return &u, nil
+}
+
+type User struct {
+	ID   int64  \`json:"id"\`
+	Name string \`json:"name"\`
+}
+
+func main() {
+	u, err := fetchUser(42)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("user: %s\\n", u.Name)
+}
+`;
+
+const baseExtensions = [
+  lineNumbers(),
+  highlightActiveLineGutter(),
+  highlightSpecialChars(),
+  history(),
+  foldGutter(),
+  drawSelection(),
+  dropCursor(),
+  EditorState.allowMultipleSelections.of(true),
+  indentOnInput(),
+  bracketMatching(),
+  closeBrackets(),
+  autocompletion(),
+  rectangularSelection(),
+  crosshairCursor(),
+  highlightActiveLine(),
+  highlightSelectionMatches(),
+  go(),
+  keymap.of([
+    ...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap,
+    ...historyKeymap, ...completionKeymap, ...lintKeymap,
+  ]),
+];
+
+const themeCompartment = new Compartment();
+let view = null;
+
+// role helper: pull the hex/font for a role key with fallbacks.
+function rc(roles, key, hex, font) {
+  const r = roles[key] || {};
+  return { hex: r.hex || hex, font: r.font || font || "" };
+}
+
+function buildHighlight(t) {
+  const R = t.roles;
+  const comment = rc(R, "comment", t.editor.lineNumber, "italic");
+  const keyword = rc(R, "keyword", t.editor.foreground, "bold");
+  const quote = rc(R, "quote", t.editor.foreground);
+  const literal = rc(R, "literal", t.editor.foreground);
+  const operator = rc(R, "operator", t.editor.foreground);
+  const punctuation = rc(R, "punctuation", t.editor.foreground);
+  const identifier = rc(R, "identifier", t.editor.foreground);
+  const property = rc(R, "property", t.editor.foreground);
+  const weakKeyword = rc(R, "weakKeyword", t.editor.foreground);
+  const method = rc(R, "method", t.editor.foreground);
+  const declare = rc(R, "declare", t.editor.foreground);
+  const typeName = rc(R, "typeName", t.editor.foreground);
+  const builtIn = rc(R, "builtInType", t.editor.foreground);
+  const namespace = rc(R, "namespace", t.editor.foreground);
+  const invalid = rc(R, "invalid", t.editor.foreground);
+
+  return HighlightStyle.define([
+    { tag: tags.comment, color: comment.hex, fontStyle: comment.font || "italic" },
+    { tag: tags.lineComment, color: comment.hex, fontStyle: comment.font || "italic" },
+    { tag: tags.blockComment, color: comment.hex, fontStyle: comment.font || "italic" },
+    { tag: tags.docComment, color: comment.hex, fontStyle: comment.font || "italic" },
+    { tag: tags.keyword, color: keyword.hex, fontStyle: keyword.font },
+    { tag: tags.definition(tags.keyword), color: keyword.hex },
+    { tag: tags.modifier, color: keyword.hex },
+    { tag: tags.tagName, color: keyword.hex },
+    { tag: tags.string, color: quote.hex, fontStyle: quote.font },
+    { tag: tags.character, color: quote.hex, fontStyle: quote.font },
+    { tag: tags.special(tags.string), color: operator.hex },
+    { tag: tags.number, color: literal.hex },
+    { tag: tags.bool, color: literal.hex },
+    { tag: tags.atom, color: literal.hex },
+    { tag: tags.null, color: literal.hex },
+    { tag: tags.operator, color: operator.hex },
+    { tag: tags.punctuation, color: punctuation.hex },
+    { tag: tags.bracket, color: punctuation.hex },
+    { tag: tags.separator, color: punctuation.hex },
+    { tag: tags.variableName, color: identifier.hex },
+    { tag: tags.propertyName, color: property.hex },
+    { tag: tags.self, color: weakKeyword.hex },
+    { tag: tags.function(tags.variableName), color: method.hex },
+    { tag: tags.definition(tags.variableName), color: declare.hex },
+    { tag: tags.className, color: typeName.hex },
+    { tag: tags.typeName, color: typeName.hex },
+    { tag: tags.builtin, color: builtIn.hex },
+    { tag: tags.namespace, color: namespace.hex },
+    { tag: tags.invalid, color: invalid.hex },
+  ]);
+}
+
+function buildEditorTheme(t) {
+  const e = t.editor;
+  return EditorView.theme({
+    "&": { backgroundColor: e.background, color: e.foreground },
+    ".cm-content": { caretColor: e.cursor },
+    ".cm-cursor, .cm-dropCursor": { borderLeftColor: e.cursor },
+    "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
+      { backgroundColor: e.selection },
+    ".cm-gutters": { backgroundColor: e.gutter, color: e.lineNumber, border: "none" },
+    ".cm-activeLineGutter": { backgroundColor: e.gutter, color: e.activeLineNumber },
+    ".cm-activeLine": { backgroundColor: e.activeLine },
+    ".cm-searchMatch": { backgroundColor: e.searchMatch },
+    ".cm-matchingBracket": { backgroundColor: e.bracketMatch },
+  }, { dark: t.dark });
+}
+
+function applyTheme(t) {
+  if (!view) return;
+  view.dispatch({
+    effects: themeCompartment.reconfigure([
+      buildEditorTheme(t),
+      syntaxHighlighting(buildHighlight(t), { fallback: true }),
+    ]),
+  });
+  applyChrome(t);
+  renderSwatches(t);
+}
+
+function applyChrome(t) {
+  const e = t.editor;
+  const root = document.documentElement.style;
+  root.setProperty("--bg", e.background);
+  root.setProperty("--panel", e.gutter);
+  root.setProperty("--panel-2", t.palette.bg ? t.palette.bg[2] : e.gutter);
+  root.setProperty("--fg", e.foreground);
+  root.setProperty("--muted", e.lineNumber);
+  root.setProperty("--accent", t.accent);
+  root.setProperty("--border", t.palette.fg ? t.palette.fg[3] : e.lineNumber);
+}
+
+const SWATCH_KEYS = [
+  ["accent", "accent"], ["coAccent", "co-accent"], ["coShades", "co-shades"],
+  ["fg", "foreground"], ["bg", "background"], ["red", "red"], ["orange", "orange"],
+  ["green", "green"], ["blue", "blue"], ["violet", "violet"],
+];
+
+function renderSwatches(t) {
+  const host = document.getElementById("swatches");
+  host.textContent = "";
+  const P = t.palette || {};
+  for (const [key, label] of SWATCH_KEYS) {
+    const arr = P[key];
+    if (!arr || !arr.length) continue;
+    const group = document.createElement("div");
+    group.className = "swatch-group";
+    const lab = document.createElement("div");
+    lab.className = "label";
+    lab.textContent = label;
+    const strip = document.createElement("div");
+    strip.className = "strip";
+    for (const hex of arr) {
+      const cell = document.createElement("span");
+      cell.style.background = hex;
+      strip.appendChild(cell);
+    }
+    group.appendChild(lab);
+    group.appendChild(strip);
+    host.appendChild(group);
+  }
+}
+
+// --- form state -------------------------------------------------------------
+
+const nameInput = document.getElementById("theme-name");
+const slugInput = document.getElementById("theme-slug");
+const colorInput = document.getElementById("theme-accent-color");
+const hexInput = document.getElementById("theme-accent-hex");
+const listEl = document.getElementById("themes-list");
+const flashEl = document.getElementById("flash");
+
+let previewTimer = null;
+
+function currentAccent() {
+  let hex = hexInput.value.trim();
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) hex = colorInput.value;
+  return hex.toLowerCase();
+}
+
+function syncHexToColor() {
+  const hex = hexInput.value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) colorInput.value = hex;
+}
+
+function setForm(slug, name, accent) {
+  slugInput.value = slug || "";
+  nameInput.value = name || "";
+  colorInput.value = (accent || "#6088C9").toLowerCase();
+  hexInput.value = (accent || "#6088C9").toLowerCase();
+}
+
+async function previewCurrent() {
+  const accent = currentAccent();
+  try {
+    const res = await fetch("/api/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: nameInput.value.trim() || "Preview", accent }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "preview failed");
+    applyTheme(data);
+    flash(data.error || "", "error");
+  } catch (err) {
+    flash(err.message, "error");
+  }
+}
+
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(previewCurrent, 180);
+}
+
+function flash(message, kind) {
+  if (!message) return;
+  flashEl.textContent = message;
+  flashEl.className = "flash " + (kind || "ok");
+}
+
+function selectRow(row) {
+  for (const r of listEl.querySelectorAll(".theme-row")) r.classList.remove("active");
+  row.classList.add("active");
+  setForm(row.dataset.slug, row.dataset.name, row.dataset.accent);
+  previewCurrent();
+}
+
+function selectByName(name) {
+  for (const row of listEl.querySelectorAll(".theme-row")) {
+    if (row.dataset.name === name) { selectRow(row); return; }
+  }
+}
+
+// --- events ------------------------------------------------------------------
+
+listEl.addEventListener("click", (ev) => {
+  const row = ev.target.closest(".theme-row");
+  if (row) selectRow(row);
+});
+
+document.getElementById("new-btn").addEventListener("click", () => {
+  for (const r of listEl.querySelectorAll(".theme-row")) r.classList.remove("active");
+  setForm("", "", "#6088C9");
+  previewCurrent();
+});
+
+nameInput.addEventListener("input", schedulePreview);
+hexInput.addEventListener("input", () => { syncHexToColor(); schedulePreview(); });
+colorInput.addEventListener("input", () => { hexInput.value = colorInput.value; schedulePreview(); });
+
+// After an HTMX swap, keep the list in sync and reflect the saved theme.
+document.body.addEventListener("htmx:afterSwap", (ev) => {
+  if (ev.detail.target.id === "themes-list") {
+    const name = nameInput.value.trim();
+    if (name) selectByName(name);
+  }
+});
+
+// --- boot ----------------------------------------------------------------------
+
+view = new EditorView({
+  parent: document.getElementById("preview"),
+  state: EditorState.create({
+    doc: SAMPLE,
+    extensions: [baseExtensions, themeCompartment.of([])],
+  }),
+});
+
+const first = listEl.querySelector(".theme-row");
+if (first) {
+  selectRow(first);
+} else {
+  setForm("", "", "#6088C9");
+  previewCurrent();
+}
+</script>
+</body>
+</html>
+
+{{define "themes-list"}}
+<ul id="themes-list">
+  {{range .}}
+  <li class="theme-row" data-slug="{{.Slug}}" data-name="{{.Name}}" data-accent="{{.Accent}}">
+    <span class="swatch" style="background: {{.Accent}}"></span>
+    <span class="name">{{.Name}}</span>
+    <span class="accent">{{.Accent}}</span>
+  </li>
+  {{end}}
+</ul>
+{{end}}
+
+{{define "flash"}}
+<div id="flash" hx-swap-oob="true" class="flash {{.Kind}}">{{.Message}}</div>
+{{end}}

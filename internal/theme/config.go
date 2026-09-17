@@ -18,11 +18,19 @@ type Config struct {
 	Slug string
 	// Name is the display name in the editor, e.g. "Monochrome-Purple".
 	Name string
+	// Accent is the accent color as configured, e.g. "#6088C9".
+	Accent string
 	// Props feeds the palette builder.
 	Props color.PaletteProps
 	// BracketGrades picks the six bracket-highlight colors from the ring,
 	// in order of nesting depth.
 	BracketGrades []color.PaletteKey
+}
+
+// Variant is one theme entry in the config file: just the configurable bits.
+type Variant struct {
+	Name   string `toml:"name"`
+	Accent string `toml:"accent"`
 }
 
 // tomlFile is the shape of the themes configuration file.
@@ -33,14 +41,37 @@ type tomlFile struct {
 // tomlTheme is one theme variant: a name and an accent color. The slug is
 // derived from the name and the rest of the color model is derived from the
 // accent by fromAccent.
-type tomlTheme struct {
-	Name   string `toml:"name"`
-	Accent string `toml:"accent"`
-}
+type tomlTheme Variant
 
 // Load reads a themes TOML file and turns each entry into a Config, deriving
 // the whole monochromatic + accent model from the accent color.
 func Load(path string) ([]Config, error) {
+	variants, err := LoadVariants(path)
+	if err != nil {
+		return nil, err
+	}
+	if len(variants) == 0 {
+		return nil, fmt.Errorf("themes config %s defines no themes", path)
+	}
+
+	seen := make(map[string]bool, len(variants))
+	configs := make([]Config, 0, len(variants))
+	for _, v := range variants {
+		cfg, err := ConfigFromVariant(v)
+		if err != nil {
+			return nil, fmt.Errorf("themes config %s: %w", path, err)
+		}
+		if seen[cfg.Slug] {
+			return nil, fmt.Errorf("themes config %s: duplicate theme slug %q", path, cfg.Slug)
+		}
+		seen[cfg.Slug] = true
+		configs = append(configs, cfg)
+	}
+	return configs, nil
+}
+
+// LoadVariants reads a themes TOML file and returns the name/accent entries.
+func LoadVariants(path string) ([]Variant, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read themes config: %w", err)
@@ -49,32 +80,49 @@ func Load(path string) ([]Config, error) {
 	if err := toml.Unmarshal(data, &f); err != nil {
 		return nil, fmt.Errorf("parse themes config %s: %w", path, err)
 	}
-	if len(f.Themes) == 0 {
-		return nil, fmt.Errorf("themes config %s defines no themes", path)
-	}
-
-	seen := make(map[string]bool, len(f.Themes))
-	configs := make([]Config, 0, len(f.Themes))
+	variants := make([]Variant, 0, len(f.Themes))
 	for _, t := range f.Themes {
-		if t.Name == "" {
-			return nil, fmt.Errorf("themes config %s: theme is missing a name", path)
-		}
-		slug := Slugify(t.Name)
-		if slug == "" {
-			return nil, fmt.Errorf("themes config %s: theme name %q produces an empty slug", path, t.Name)
-		}
-		if seen[slug] {
-			return nil, fmt.Errorf("themes config %s: duplicate theme slug %q", path, slug)
-		}
-		seen[slug] = true
-
-		accent, err := color.Hex(t.Accent)
-		if err != nil {
-			return nil, fmt.Errorf("themes config %s: theme %q accent: %w", path, t.Name, err)
-		}
-		configs = append(configs, fromAccent(slug, t.Name, accent))
+		variants = append(variants, Variant(t))
 	}
-	return configs, nil
+	return variants, nil
+}
+
+// SaveVariants writes theme entries to a TOML file, preserving the header
+// comment that explains the configurable-only model.
+func SaveVariants(path string, variants []Variant) error {
+	var b strings.Builder
+	b.WriteString(configHeader)
+	b.WriteString("\n\n")
+	for _, v := range variants {
+		fmt.Fprintf(&b, "[[theme]]\nname = %q\naccent = %q\n\n", v.Name, v.Accent)
+	}
+	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
+		return fmt.Errorf("write themes config: %w", err)
+	}
+	return nil
+}
+
+// configHeader is the comment block at the top of themes.toml.
+const configHeader = `# One Hue theme variants. Each entry picks an accent color; the whole
+# monochromatic + accent model (grays, co-accent, semantic ring) is derived
+# from that accent by the generator, so only name and accent are configurable.`
+
+// ConfigFromVariant derives a full Config from a name/accent entry.
+func ConfigFromVariant(v Variant) (Config, error) {
+	if v.Name == "" {
+		return Config{}, fmt.Errorf("theme is missing a name")
+	}
+	slug := Slugify(v.Name)
+	if slug == "" {
+		return Config{}, fmt.Errorf("theme name %q produces an empty slug", v.Name)
+	}
+	accent, err := color.Hex(v.Accent)
+	if err != nil {
+		return Config{}, fmt.Errorf("theme %q accent: %w", v.Name, err)
+	}
+	cfg := fromAccent(slug, v.Name, accent)
+	cfg.Accent = v.Accent
+	return cfg, nil
 }
 
 // Slugify turns a theme name into its filename stem: lowercased, with runs of

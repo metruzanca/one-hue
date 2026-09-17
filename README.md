@@ -20,6 +20,20 @@ go run . install --editors vscode,zed
 go run . install --editors zed
 ```
 
+### Web preview (`serve`)
+
+Spin up a local web app to preview, create and edit theme variants with a live
+CodeMirror preview. No npm — HTMX and CodeMirror load from a CDN:
+
+```sh
+go run . serve                 # http://localhost:8080
+go run . serve --addr :9000    # custom port
+```
+
+Pick a theme in the sidebar to preview it, or hit **New theme**. Editing the
+name or accent updates the preview immediately; **Save theme** rewrites
+`themes.toml` and regenerates every editor target under `themes/`.
+
 Install locations:
 
 - **VS Code** — written as a local extension under
